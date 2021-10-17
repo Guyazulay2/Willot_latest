@@ -55,6 +55,7 @@ tcl8.6-dev tk8.6-dev python-tk
 
 pip3 install Pillow
 
+pip3 install numpy
 
 
 ```
