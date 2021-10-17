@@ -221,18 +221,18 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
                 # requests.post(conn_http, json = data_to_send, timeout=1)   # send picture 
             #     print("sent Picture..")
             if should_send_data:
-                print(data_to_send)
+                #print(data_to_send)
                 requests.post(conn_http, json = data_to_send, timeout=1)   # send json data 
-                print("sent json data..")
+                #print("sent json data..")
 
 
         except Exception as e:
             print(f"failed to post {failed_to_post_max_retries} to {conn_http}\n{e}")
-            failed_to_post_max_retries = 2 #  -= 1
+            failed_to_post_max_retries = 4 #  -= 1
     else:
         if not failed_to_post_reached:
             print("max retries reached, not sending")
-            failed_to_post_reached = True
+            failed_to_post_reached = False
 
     # if failed_to_post_image_max_retries > 0 :
     #     try:
