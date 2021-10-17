@@ -17,8 +17,8 @@ def show_image():
             print("no image")
             sleep(6)
             continue
-        cv2.imshow("1",current_image)
-        cv2.waitKey(3)
+        #cv2.imshow("1",current_image)
+        #cv2.waitKey(3)
 image_shower = threading.Thread(target=show_image)
 
 
