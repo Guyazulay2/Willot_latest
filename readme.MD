@@ -43,6 +43,10 @@ $ docker run -it --rm --network="host" --runtime nvidia --gpus all -e CONN_HTTP=
 
 ## Installations 
 ```
+$ sudo apt update
+
+$ sudo apt install python3-opencv
+
 $ pip3 install flask 
 
 $ sudo apt-get install libtiff5-dev libjpeg8-dev zlib1g-dev
