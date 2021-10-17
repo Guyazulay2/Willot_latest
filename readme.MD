@@ -53,11 +53,11 @@ $ sudo apt-get install libtiff5-dev libjpeg8-dev zlib1g-dev
 libfreetype6-dev liblcms2-dev libwebp-dev libharfbuzz-dev libfribidi-dev
 tcl8.6-dev tk8.6-dev python-tk
 
-pip3 install Pillow
+$ pip3 install Pillow
 
-pip3 install numpy
+$ pip3 install numpy
 
-pip3 install opencv-python
+$ pip3 install opencv-python
 
 
 ```
