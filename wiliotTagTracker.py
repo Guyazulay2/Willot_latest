@@ -15,7 +15,7 @@ from common.bus_call import bus_call
 from common.utils import long_to_int
 from common.FPS import GETFPS
 import pyds
-import requests
+import requests as r0
 from datetime import datetime
 import cv2 
 import numpy as np
@@ -23,11 +23,13 @@ import yaml
 import argparse
 import time
 import base64
+import threading
 
-failed_to_post_max_retries = 2
+failed_to_post_max_retries = 20
 failed_to_post_image_max_retries = 2
 failed_to_post_reached = False
 failed_to_post_image_reached = False
+
 fps_streams={}
 MAX_DISPLAY_LEN=64
 MAX_TIME_STAMP_LEN=32
@@ -37,6 +39,11 @@ MAX_TIME_STAMP_LEN=32
 cfg = None
 no_display = False
 current_time = None
+s_count = 0
+requests = []
+loop = None
+
+Gst.init(None)
 
 
 # getFps = GETFPS("/dev/video0")
@@ -80,11 +87,13 @@ def draw_bounding_boxes(image, obj_meta, confidence):
 # b) loops inside probe() callback could be costly in python.
 #    So users shall optimize according to their use-case.
 def osd_sink_pad_buffer_probe(pad,info,u_data):
+    global s_count
     global failed_to_post_max_retries
     global failed_to_post_image_max_retries
     global failed_to_post_reached
     global failed_to_post_image_reached
     global cfg, current_time
+    global requests
     # frame_number=0
     # source = cfg['source']
     now = datetime.now()
@@ -97,23 +106,22 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
     }
     box_data = []
 
+    print(s_count) ######
+    s_count+=1
     data_to_send = {"timeStamp":dt_string ,"data": box_data}
-    is_first_object=True
     gst_buffer = info.get_buffer()
+    #print("print 11111")
     if not gst_buffer:
         print("Unable to get GstBuffer ")
-        return
-
-
-    # Retrieve batch metadata from the gst_buffer
-    # Note that pyds.gst_buffer_get_nvds_batch_meta() expects the
-    # C address of gst_buffer as input, which is obtained with hash(gst_buffer)
+        return Gst.PadProbeReturn.OK
+    
     batch_meta = pyds.gst_buffer_get_nvds_batch_meta(hash(gst_buffer))
     # latency_meta = pyds.measure_buffer_latency(hash(gst_buffer))
     # print(latency_meta)
     if not batch_meta:
         return Gst.PadProbeReturn.OK
     l_frame = batch_meta.frame_meta_list
+   
     while l_frame is not None:
         try:
             # Note that l_frame.data needs a cast to pyds.NvDsFrameMeta
@@ -122,9 +130,9 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
             # in the C code, so the Python garbage collector will leave
             # it alone.
             frame_meta = pyds.NvDsFrameMeta.cast(l_frame.data)
+            # print(f"frame_meta:{frame_meta}")
         except StopIteration:
-            continue
-        is_first_object = True
+            continue        
 
         '''
         print("Frame Number is ", frame_meta.frame_num)
@@ -200,85 +208,52 @@ def osd_sink_pad_buffer_probe(pad,info,u_data):
             l_frame=l_frame.next
         except StopIteration:
             break
-        # if not frame_number % 4:
-            # print(data_to_send)
-        # if not save_image and not frame_number % dataSend:
-        #     n_frame = pyds.get_nvds_buf_surface(hash(gst_buffer), frame_meta.batch_id)
-        #     # convert python array into numpy array format in the copy mode.
-        #     frame_copy = np.array(n_frame, copy=True, order='C')
-        #     # convert the array into cv2 default color format
-        #     frame_copy = cv2.cvtColor(frame_copy, cv2.COLOR_RGBA2BGRA)
-        #     save_image = True    
-
-        # if save_image:
-        #     img_name = "{}/stream_{}_time_{}.jpg".format(folder_name, frame_meta.pad_index, dt_string)
-        #     cv2.imwrite(img_name, frame_copy)
-        #     # print(img_path)
 
     if failed_to_post_max_retries > 0 :
+        
         try:
             # if should_send_image:
                 # requests.post(conn_http, json = data_to_send, timeout=1)   # send picture 
-            #     print("sent Picture..")
             if should_send_data:
-                #print(data_to_send)
-                requests.post(conn_http, json = data_to_send, timeout=1)   # send json data 
-                #print("sent json data..")
+                requests.append(data_to_send)
+                #requests.post(conn_http, json = data_to_send)   # send json data 
 
 
         except Exception as e:
             print(f"failed to post {failed_to_post_max_retries} to {conn_http}\n{e}")
-            failed_to_post_max_retries = 4 #  -= 1
-    else:
-        if not failed_to_post_reached:
+    elif not failed_to_post_reached:
             print("max retries reached, not sending")
-            failed_to_post_reached = False
-
-    # if failed_to_post_image_max_retries > 0 :
-    #     try:
-    #         if not frame_number % picSend:
-    #             files = {'media': open(img_name, 'rb')}
-    #             requests.post(conn_http, files=files, timeout=1)
-    #     except:
-    #         print(f"failed to post image {failed_to_post_image_max_retries} to {conn_http}")
-    #         failed_to_post_image_max_retries -= 1
-    # else:
-    #     if not failed_to_post_image_reached:
-    #         print("max retries reached, not picture sending")
-    #         failed_to_post_image_reached = True
-
-    for filename in os.listdir(image_dir_path):
-        file_path = os.path.join(image_dir_path, filename)
-        filestamp = os.stat(file_path).st_mtime
-        filecompare = time.time() - (picDeleteDays * 86400 + picDeleteSec)
-        if filestamp < filecompare:
-            # print(f"removing {file_path}")
-            os.remove(file_path)
-    # getFps.get_fps()
-    # print(obj_counter["frame"])
-    # print(obj_counter)                                                                                                                                                                                                                                                                                                                                                                                                                                                                
     return Gst.PadProbeReturn.OK
 
 
 def make_camera_source(camera):
     device = camera["device"]
+    os.stat(device)
     extraControls = camera.get("extra-controls", None)
     target_fps = camera.get("target_fps", None)
     pipe = f"v4l2src device={device} "
     if extraControls != None:
         pipe += f"extra-controls=\"{extraControls}\" " 
     caps = camera.get("caps", None)
-    if caps:
-        pipe += f" ! capsfilter caps=\"{caps}\" "
-    if not caps or caps.startswith("image/jpeg"):
-        pipe += " ! jpegdec ! "
-    else: 
-        pipe += " ! "
+    if caps != None:
+        if caps:
+            pipe += f" ! capsfilter caps=\"{caps}\" "
+        if caps.startswith("image/jpeg"):
+            pipe += " ! jpegdec"
+    pipe += " ! "
+    pipe += "queue"
+    pipe += " ! "   
     if target_fps != None:
         pipe += f"videorate ! video/x-raw, framerate={target_fps} ! " 
     pipe += "nvvideoconvert ! capsfilter caps=\"video/x-raw(memory:NVMM)\""
     print(pipe)
     source = Gst.parse_bin_from_description(pipe, True)
+    try:
+        source.set_state(Gst.State.PLAYING)
+    except Exception as e:
+        raise e
+    print(source)
+    source.set_state(Gst.State.NULL)
     return source
 
 def link_to_tee(tee, dest):
@@ -293,32 +268,17 @@ def make_display_bin():
 def make_empty_bin():
     return Gst.parse_bin_from_description(f"queue ! fakesink sync=false", True)
 
-def main(args):
-
+def main():
     global current_time
-
     MUXER_OUTPUT_WIDTH = width
     MUXER_OUTPUT_HEIGHT = height
-    MUXER_BATCH_TIMEOUT_USEC=4000
+    MUXER_BATCH_TIMEOUT_USEC=400000
     PGIE_CONFIG_FILE = config_file_path
-
     GObject.threads_init()
-    Gst.init(None)
     global folder_name
-    folder_name = image_dir_path
-    checkFolder = os.path.isdir(folder_name)                        
-    if not checkFolder:
-        try:                                                                                                                                                                                                                                                                                                                                    
-            os.makedirs(folder_name)
-            print("created Folder:", folder_name)
-        except:
-            print(folder_name + " already exists.")
 
-    print("Frames will be saved in ", folder_name)
-    # Standard GStreamer initialization
     GObject.threads_init()
     Gst.init(None)
-    
     print("Creating Pipeline \n ")
 
     pipeline = Gst.Pipeline()                                              
@@ -369,7 +329,7 @@ def main(args):
     nvmultistreamtiler.set_property('width', MUXER_OUTPUT_WIDTH)
     nvmultistreamtiler.set_property('height', MUXER_OUTPUT_HEIGHT)
     pgie.set_property('config-file-path', PGIE_CONFIG_FILE)
-
+    
     print("Adding elements to Pipeline \n")
     pipeline.add(streammux)
     pipeline.add(nvvidconv)
@@ -380,9 +340,7 @@ def main(args):
     pipeline.add(nvosd)
     pipeline.add(tee)
     pipeline.add(sink)
-
     print("Linking elements in the Pipeline \n")
-
     streammux.link(pgie)
     pgie.link(nvvidconv)
     nvvidconv.link(filter1)
@@ -390,8 +348,10 @@ def main(args):
     nvmultistreamtiler.link(nvvidconv1)
     nvvidconv1.link(nvosd)
     nvosd.link(tee)
-
     source_index = 0
+    #print("print 7777")
+
+
     def newDevice(camera_source):
         nonlocal source_index
         device = camera_source.get("device")
@@ -401,16 +361,21 @@ def main(args):
             "target_fps": target_fps,
             "caps": camera_source.get("caps", None)
         }
-        source = make_camera_source(camera)
-        pipeline.add(source)
-        source_src_pad = source.get_static_pad("src")
-        if not source_src_pad:
-            sys.stderr.write(f"Unable to get source pad of source {source_index} \n")
-        streammux_sink = streammux.get_request_pad(f"sink_{source_index}")
-        if not streammux_sink:
-            sys.stderr.write(" Unable to get sink pad of nvstreammux \n")
-        source_src_pad.link(streammux_sink)
-        source_index += 1
+        #print("print 8888")
+        try:
+            source = make_camera_source(camera)
+            pipeline.add(source)
+            source_src_pad = source.get_static_pad("src")
+            if not source_src_pad:
+                sys.stderr.write(f"Unable to get source pad of source {source_index} \n")
+            streammux_sink = streammux.get_request_pad(f"sink_{source_index}")
+            if not streammux_sink:
+                sys.stderr.write(" Unable to get sink pad of nvstreammux \n")
+            source_src_pad.link(streammux_sink)
+            source_index += 1            
+        except:
+            pass
+        #print("print 9999")
     if camera_source and camera_source.get("enable", True):
         newDevice(camera_source)
     if camera_source1 and camera_source1.get("enable", True):
@@ -423,7 +388,10 @@ def main(args):
     link_to_tee(tee, sink)
 
     # create an event loop and feed gstreamer bus mesages to it
-    loop = GObject.MainLoop()
+    global loop
+    if not loop :
+        loop = GObject.MainLoop()
+
     bus = pipeline.get_bus()
     bus.add_signal_watch()
     bus.connect ("message", bus_call, loop)
@@ -432,20 +400,25 @@ def main(args):
     if not tilerpad:
         sys.stderr.write(" Unable to get src pad of nvmultistreamtiler \n")
 
-
     tilerpad.add_probe(Gst.PadProbeType.BUFFER, osd_sink_pad_buffer_probe, 0)
     print("Starting pipeline \n")
-
     current_time = time.time()
     # start play back and listed to events
-    pipeline.set_state(Gst.State.PLAYING)
+
+    def cleanup():
+        pyds.unset_callback_funcs()
+        pipeline.set_state(Gst.State.NULL)
+
     try:
+        pipeline.set_state(Gst.State.PLAYING)
         loop.run()
-    except:
-        pass
-    # cleanup
-    pyds.unset_callback_funcs()
-    pipeline.set_state(Gst.State.NULL)
+        cleanup()              
+    except Exception as e:
+        cleanup()
+        raise e          
+    
+    
+    
 
 # Parse and validate input arguments
 def parse_args():
@@ -486,10 +459,24 @@ def parse_args():
 
     return 0
 
+def handleRequest():
+    global requests
+    while True:
+        try :   
+            data =  requests.pop()      
+            r0.post (conn_http,json=data)
+        except :    
+            pass    
+
 if __name__ == '__main__':
     ret = parse_args()
-    #If argumer parsing fail, return failure (non-zero)
     if ret == 1:
         sys.exit(1)
-    sys.exit(main(sys.argv))
-
+    t = threading.Thread(target = handleRequest,daemon=True)
+    t.start()
+    while True:
+        try:
+            main()
+        except KeyboardInterrupt as e:
+            break
+        time.sleep(2)
