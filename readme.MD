@@ -40,3 +40,27 @@ $ docker pull 247555/tagtracking:latest
 
 $ docker run -it --rm --network="host" --runtime nvidia --gpus all -e CONN_HTTP=$CONN_HTTP --device /dev/video0:/dev/video0 --device /dev/video1:/dev/video1 -e DISPLAY=$DISPLAY -v /tmp/.X11-unix/:/tmp/.X11-unix 247555/tagtracking
 ```
+<<<<<<< HEAD
+=======
+
+## Installations 
+```
+$ sudo apt update
+
+$ sudo apt install python3-opencv
+
+$ pip3 install flask 
+
+$ sudo apt-get install libtiff5-dev libjpeg8-dev zlib1g-dev
+libfreetype6-dev liblcms2-dev libwebp-dev libharfbuzz-dev libfribidi-dev
+tcl8.6-dev tk8.6-dev python-tk
+
+$ pip3 install Pillow
+
+$ pip3 install numpy
+
+$ pip3 install opencv-python
+
+
+```
+>>>>>>> 2301cfd9511bdf0c4689054a1e9ded10174ad6da

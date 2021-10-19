@@ -32,12 +32,19 @@ conn_http: "http://54.243.11.180:5000/"
 # pic send
 dataSend: 70 # in frame (70=>every ~3m)
 # json send
+<<<<<<< HEAD
 picSend: 8 # in frame (5=> every few sec)
+=======
+picSend: 14 # in frame (5=> every few sec)
+>>>>>>> 2301cfd9511bdf0c4689054a1e9ded10174ad6da
 ###
 
 picDeleteDays: 2
 picDeleteSec: 86400   # 0 - 86400 
 
 # total pic = (picDeleteSec / dataSend)*target_fps
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> 2301cfd9511bdf0c4689054a1e9ded10174ad6da

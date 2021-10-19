@@ -14,11 +14,19 @@ counter = 0
 def show_image():
     while True:
         if current_image is None:
+<<<<<<< HEAD
             print("No json ...")
             sleep(6)
             continue
         # cv2.imshow("1",current_image)
         # cv2.waitKey(3)
+=======
+            print("Json was not accepted")
+            sleep(6)
+            continue
+        #cv2.imshow("1",current_image)
+        #cv2.waitKey(3)
+>>>>>>> 2301cfd9511bdf0c4689054a1e9ded10174ad6da
 image_shower = threading.Thread(target=show_image)
 
 

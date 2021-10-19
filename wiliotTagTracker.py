@@ -6,10 +6,19 @@ import os.path
 from os import path
 import gi
 gi.require_version('Gst', '1.0')
+<<<<<<< HEAD
 from gi.repository import GObject, Gst, GLib
 import sys
 import platform
 from common.is_aarch_64 import is_aarch64
+=======
+from gi.repository import GObject, Gst
+from gi.repository import GLib
+import sys
+import platform
+from common.is_aarch_64 import is_aarch64
+from common.bus_call import bus_call
+>>>>>>> 2301cfd9511bdf0c4689054a1e9ded10174ad6da
 from common.utils import long_to_int
 from common.FPS import GETFPS
 import pyds
@@ -40,9 +49,18 @@ current_time = None
 s_count = 0
 requests = []
 loop = None
+<<<<<<< HEAD
 countt = 0
 Gst.init(None)
 
+=======
+
+Gst.init(None)
+
+
+# getFps = GETFPS("/dev/video0")
+
+>>>>>>> 2301cfd9511bdf0c4689054a1e9ded10174ad6da
 pgie_classes_str=["whiteRect"]
 
 def draw_bounding_boxes(image, obj_meta, confidence):
@@ -69,11 +87,26 @@ def draw_bounding_boxes(image, obj_meta, confidence):
     lineright_c1 = (left + width, top + h_percents)
     lineright_c2 = (left + width, top + height - h_percents)
     image = cv2.line(image, lineright_c1, lineright_c2, color, 6)
+<<<<<<< HEAD
+=======
+    # Note that on some systems cv2.putText erroneously draws horizontal lines across the image
+>>>>>>> 2301cfd9511bdf0c4689054a1e9ded10174ad6da
     image = cv2.putText(image, obj_name + ',C=' + str(confidence), (left - 10, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
                         (0, 0, 255, 0), 2)
     return image
 
+<<<<<<< HEAD
 def osd_sink_pad_buffer_probe(pad,info,user_data = None):
+=======
+# osd_sink_pad_buffer_probe  will extract metadata received on OSD sink pad
+# and update params for drawing rectangle, object information etc.
+# IMPORTANT NOTE:
+# a) probe() callbacks are synchronous and thus holds the buffer
+#    (info.get_buffer()) from traversing the pipeline until user return.
+# b) loops inside probe() callback could be costly in python.
+#    So users shall optimize according to their use-case.
+def osd_sink_pad_buffer_probe(pad,info,u_data):
+>>>>>>> 2301cfd9511bdf0c4689054a1e9ded10174ad6da
     global s_count
     global failed_to_post_max_retries
     global failed_to_post_image_max_retries
@@ -93,10 +126,18 @@ def osd_sink_pad_buffer_probe(pad,info,user_data = None):
     }
     box_data = []
 
+<<<<<<< HEAD
     #print("Get Frame :", s_count) ######
     s_count+=1
     data_to_send = {"timeStamp":dt_string ,"data": box_data}
     gst_buffer = info.get_buffer()
+=======
+    print(s_count) ######
+    s_count+=1
+    data_to_send = {"timeStamp":dt_string ,"data": box_data}
+    gst_buffer = info.get_buffer()
+    #print("print 11111")
+>>>>>>> 2301cfd9511bdf0c4689054a1e9ded10174ad6da
     if not gst_buffer:
         print("Unable to get GstBuffer ")
         return Gst.PadProbeReturn.OK
@@ -110,6 +151,14 @@ def osd_sink_pad_buffer_probe(pad,info,user_data = None):
    
     while l_frame is not None:
         try:
+<<<<<<< HEAD
+=======
+            # Note that l_frame.data needs a cast to pyds.NvDsFrameMeta
+            # The casting is done by pyds.NvDsFrameMeta.cast()
+            # The casting also keeps ownership of the underlying memory
+            # in the C code, so the Python garbage collector will leave
+            # it alone.
+>>>>>>> 2301cfd9511bdf0c4689054a1e9ded10174ad6da
             frame_meta = pyds.NvDsFrameMeta.cast(l_frame.data)
             # print(f"frame_meta:{frame_meta}")
         except StopIteration:
@@ -161,6 +210,21 @@ def osd_sink_pad_buffer_probe(pad,info,user_data = None):
             # set(red, green, blue, alpha); set to Black
             txt_params.text_bg_clr.set(0.0, 0.0, 0.0, 1.0)
 
+<<<<<<< HEAD
+=======
+            if should_send_image:
+                n_frame = pyds.get_nvds_buf_surface(hash(gst_buffer), frame_meta.batch_id)
+                n_frame = draw_bounding_boxes(n_frame, obj_meta, obj_meta.confidence)
+                # convert python array into numpy array format in the copy mode.
+                frame_copy = np.array(n_frame, copy=True, order='C')
+                # convert the array into cv2 default color format
+                # frame_copy = cv2.cvtColor(frame_copy, cv2.COLOR_RGBA2BGRA)
+                save_image = True
+                _, im_arr = cv2.imencode(".jpg", frame_copy)
+                image_data = base64.b64encode(im_arr.tobytes()).decode("utf-8")
+                data_to_send["image"] = image_data
+
+>>>>>>> 2301cfd9511bdf0c4689054a1e9ded10174ad6da
             bbox = { "top": obj_meta.rect_params.top, "left":  obj_meta.rect_params.left, "width":  obj_meta.rect_params.width, "height":obj_meta.rect_params.height}
             obj = { 'label':pgie_classes_str[obj_meta.class_id],
                     'bbox':bbox,
@@ -168,6 +232,10 @@ def osd_sink_pad_buffer_probe(pad,info,user_data = None):
                     }
             box_data.append(obj)
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 2301cfd9511bdf0c4689054a1e9ded10174ad6da
             try:
                 l_obj=l_obj.next
             except StopIteration:
@@ -183,7 +251,10 @@ def osd_sink_pad_buffer_probe(pad,info,user_data = None):
             # if should_send_image:
                 # requests.post(conn_http, json = data_to_send, timeout=1)   # send picture 
             if should_send_data:
+<<<<<<< HEAD
                 #print(data_to_send)
+=======
+>>>>>>> 2301cfd9511bdf0c4689054a1e9ded10174ad6da
                 requests.append(data_to_send)
                 #requests.post(conn_http, json = data_to_send)   # send json data 
 
@@ -195,6 +266,7 @@ def osd_sink_pad_buffer_probe(pad,info,user_data = None):
     return Gst.PadProbeReturn.OK
 
 
+<<<<<<< HEAD
 def create_pipeline(loop):
     def create_camera_pipeline(camera_source, appsrc):
         pipeline = None
@@ -358,6 +430,201 @@ def main():
     p["stop"]()
         
 
+=======
+def make_camera_source(camera):
+    device = camera["device"]
+    os.stat(device)
+    extraControls = camera.get("extra-controls", None)
+    target_fps = camera.get("target_fps", None)
+    pipe = f"v4l2src device={device} "
+    if extraControls != None:
+        pipe += f"extra-controls=\"{extraControls}\" " 
+    caps = camera.get("caps", None)
+    if caps != None:
+        if caps:
+            pipe += f" ! capsfilter caps=\"{caps}\" "
+        if caps.startswith("image/jpeg"):
+            pipe += " ! jpegdec"
+    pipe += " ! "
+    pipe += "queue"
+    pipe += " ! "   
+    if target_fps != None:
+        pipe += f"videorate ! video/x-raw, framerate={target_fps} ! " 
+    pipe += "nvvideoconvert ! capsfilter caps=\"video/x-raw(memory:NVMM)\""
+    print(pipe)
+    source = Gst.parse_bin_from_description(pipe, True)
+    try:
+        source.set_state(Gst.State.PLAYING)
+    except Exception as e:
+        raise e
+    print(source)
+    source.set_state(Gst.State.NULL)
+    return source
+
+def link_to_tee(tee, dest):
+    sink = dest.get_static_pad("sink")
+    src = tee.get_request_pad('src_%u')
+    src.link(sink)
+    return src
+
+def make_display_bin():
+    return Gst.parse_bin_from_description(f"queue ! nvegltransform ! nveglglessink sync=false", True)
+
+def make_empty_bin():
+    return Gst.parse_bin_from_description(f"queue ! fakesink sync=false", True)
+
+def main():
+    global current_time
+    MUXER_OUTPUT_WIDTH = width
+    MUXER_OUTPUT_HEIGHT = height
+    MUXER_BATCH_TIMEOUT_USEC=400000
+    PGIE_CONFIG_FILE = config_file_path
+    GObject.threads_init()
+    global folder_name
+
+    GObject.threads_init()
+    Gst.init(None)
+    print("Creating Pipeline \n ")
+
+    pipeline = Gst.Pipeline()                                              
+    if not pipeline:
+        sys.stderr.write(" Unable to create Pipeline \n")
+
+    streammux = Gst.ElementFactory.make("nvstreammux", "Stream-muxer")
+    if not streammux:
+        sys.stderr.write(" Unable to create NvStreamMux \n")
+
+    caps1 = Gst.Caps.from_string("video/x-raw(memory:NVMM), format=RGBA")
+    filter1 = Gst.ElementFactory.make("capsfilter", "filter1")
+    if not filter1:
+        sys.stderr.write(" Unable to get the caps filter1 \n")
+    filter1.set_property("caps", caps1)
+
+    nvmultistreamtiler = Gst.ElementFactory.make("nvmultistreamtiler", None)
+    if not nvmultistreamtiler:
+        sys.stderr.write(" Unable to create nvmultistreamtiler ")
+
+    pgie = Gst.ElementFactory.make("nvinfer", "primary-inference")
+    if not pgie:
+        sys.stderr.write(" Unable to create pgie \n")
+
+    nvvidconv = Gst.ElementFactory.make("nvvideoconvert", "convertor")
+    if not nvvidconv:
+        sys.stderr.write(" Unable to create nvvidconv \n")
+
+    nvvidconv1 = Gst.ElementFactory.make("nvvideoconvert", None)
+    if not nvvidconv1:
+        sys.stderr.write(" Unable to create nvvidconv1 \n")
+
+    nvosd = Gst.ElementFactory.make("nvdsosd", "onscreendisplay")
+    if not nvosd:
+        sys.stderr.write(" Unable to create nvosd \n")
+
+    tee=Gst.ElementFactory.make("tee", "nvsink-tee")
+    if not tee:
+        sys.stderr.write(" Unable to create tee \n")
+
+    sink = make_empty_bin() if no_display else make_display_bin()
+    streammux.set_property('width', MUXER_OUTPUT_WIDTH)
+    streammux.set_property('height', MUXER_OUTPUT_HEIGHT)
+    streammux.set_property('batch-size', 1)
+    streammux.set_property('batched-push-timeout', MUXER_BATCH_TIMEOUT_USEC)
+    nvmultistreamtiler.set_property('columns', 2)
+    nvmultistreamtiler.set_property('rows', 2)
+    nvmultistreamtiler.set_property('width', MUXER_OUTPUT_WIDTH)
+    nvmultistreamtiler.set_property('height', MUXER_OUTPUT_HEIGHT)
+    pgie.set_property('config-file-path', PGIE_CONFIG_FILE)
+    
+    print("Adding elements to Pipeline \n")
+    pipeline.add(streammux)
+    pipeline.add(nvvidconv)
+    pipeline.add(filter1)
+    pipeline.add(nvmultistreamtiler)
+    pipeline.add(pgie)
+    pipeline.add(nvvidconv1)
+    pipeline.add(nvosd)
+    pipeline.add(tee)
+    pipeline.add(sink)
+    print("Linking elements in the Pipeline \n")
+    streammux.link(pgie)
+    pgie.link(nvvidconv)
+    nvvidconv.link(filter1)
+    filter1.link(nvmultistreamtiler)
+    nvmultistreamtiler.link(nvvidconv1)
+    nvvidconv1.link(nvosd)
+    nvosd.link(tee)
+    source_index = 0
+    #print("print 7777")
+
+
+    def newDevice(camera_source):
+        nonlocal source_index
+        device = camera_source.get("device")
+        camera = { 
+            "device": "/dev/video"+device, 
+            "extra-controls": "c,backlight_compensation=2", 
+            "target_fps": target_fps,
+            "caps": camera_source.get("caps", None)
+        }
+        #print("print 8888")
+        try:
+            source = make_camera_source(camera)
+            pipeline.add(source)
+            source_src_pad = source.get_static_pad("src")
+            if not source_src_pad:
+                sys.stderr.write(f"Unable to get source pad of source {source_index} \n")
+            streammux_sink = streammux.get_request_pad(f"sink_{source_index}")
+            if not streammux_sink:
+                sys.stderr.write(" Unable to get sink pad of nvstreammux \n")
+            source_src_pad.link(streammux_sink)
+            source_index += 1            
+        except:
+            pass
+        #print("print 9999")
+    if camera_source and camera_source.get("enable", True):
+        newDevice(camera_source)
+    if camera_source1 and camera_source1.get("enable", True):
+        newDevice(camera_source1)
+    if camera_source2 and camera_source2.get("enable", True):
+        newDevice(camera_source2)
+    if camera_source3 and camera_source3.get("enable", True):
+        newDevice(camera_source3)
+
+    link_to_tee(tee, sink)
+
+    # create an event loop and feed gstreamer bus mesages to it
+    global loop
+    if not loop :
+        loop = GObject.MainLoop()
+
+    bus = pipeline.get_bus()
+    bus.add_signal_watch()
+    bus.connect ("message", bus_call, loop)
+
+    tilerpad = nvmultistreamtiler.get_static_pad("sink")
+    if not tilerpad:
+        sys.stderr.write(" Unable to get src pad of nvmultistreamtiler \n")
+
+    tilerpad.add_probe(Gst.PadProbeType.BUFFER, osd_sink_pad_buffer_probe, 0)
+    print("Starting pipeline \n")
+    current_time = time.time()
+    # start play back and listed to events
+
+    def cleanup():
+        pyds.unset_callback_funcs()
+        pipeline.set_state(Gst.State.NULL)
+
+    try:
+        pipeline.set_state(Gst.State.PLAYING)
+        loop.run()
+        cleanup()              
+    except Exception as e:
+        cleanup()
+        raise e          
+    
+    
+    
+>>>>>>> 2301cfd9511bdf0c4689054a1e9ded10174ad6da
 
 # Parse and validate input arguments
 def parse_args():
@@ -398,6 +665,7 @@ def parse_args():
 
     return 0
 
+<<<<<<< HEAD
 
 def create_handler_request():
     global requests
@@ -427,11 +695,22 @@ def create_handler_request():
         "stop": stop,
     }
 
+=======
+def handleRequest():
+    global requests
+    while True:
+        try :   
+            data =  requests.pop()      
+            r0.post (conn_http,json=data)
+        except :    
+            pass    
+>>>>>>> 2301cfd9511bdf0c4689054a1e9ded10174ad6da
 
 if __name__ == '__main__':
     ret = parse_args()
     if ret == 1:
         sys.exit(1)
+<<<<<<< HEAD
 
     h = create_handler_request()
     t = threading.Thread(target = h["start"],daemon=True)
@@ -447,3 +726,13 @@ if __name__ == '__main__':
     h["stop"]()
     t.join()        
 
+=======
+    t = threading.Thread(target = handleRequest,daemon=True)
+    t.start()
+    while True:
+        try:
+            main()
+        except KeyboardInterrupt as e:
+            break
+        time.sleep(2)
+>>>>>>> 2301cfd9511bdf0c4689054a1e9ded10174ad6da
