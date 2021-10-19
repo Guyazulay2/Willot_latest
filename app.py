@@ -14,7 +14,7 @@ counter = 0
 def show_image():
     while True:
         if current_image is None:
-            print("no image")
+            print("Json was not accepted")
             sleep(6)
             continue
         #cv2.imshow("1",current_image)
