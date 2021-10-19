@@ -356,7 +356,7 @@ def main():
         time.sleep(1)
     print("stopping !")
     p["stop"]()
-        
+
 
 
 # Parse and validate input arguments
@@ -405,15 +405,20 @@ def create_handler_request():
     should_run = True
 
     def start():
+        global countt
         nonlocal should_run
         while should_run:
-            try :
+            try:
                 if requests != []:
-                    data = requests.pop()        
-                    r0.post(conn_http,json=data)
-                    countt+=1
-                    print("Send json to server : ", countt)
-            except :
+                    data = requests.pop()     
+                    try:
+                        r0.post(conn_http,json=data, timeout=2)
+                        countt+=1
+                        print("Send json to server : ", countt)
+                    except:
+                        print("Problem with HTTPConnection Make sure you put IP Configure file")
+            except Exception as e:
+                print(e)
                 pass
             time.sleep(1)
         print("handleRequest done")
